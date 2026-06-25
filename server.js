@@ -4,7 +4,7 @@ const https = require("https")
 const PORT = Number(process.env.PORT || 8787)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com"
-const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-1"
+const IMAGE_MODEL = process.env.IMAGE_MODEL || "Kwai-Kolors/Kolors"
 
 function sendJson(res, statusCode, data) {
   const body = JSON.stringify(data)
