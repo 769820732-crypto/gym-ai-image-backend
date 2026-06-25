@@ -52,6 +52,10 @@ function callImageApi({ prompt, size }) {
   const payload = JSON.stringify({
     model: IMAGE_MODEL,
     prompt,
+    image_size: size || "1024x1024",
+    batch_size: 1,
+    num_inference_steps: 20,
+    guidance_scale: 7.5,
     size: size || "1024x1024",
     quality: "low",
     n: 1
@@ -86,7 +90,12 @@ function callImageApi({ prompt, size }) {
         }
 
         if (apiRes.statusCode < 200 || apiRes.statusCode >= 300) {
-          reject(new Error(json.error ? json.error.message : `Image API request failed: ${apiRes.statusCode}`))
+          const message =
+            (json.error && json.error.message) ||
+            json.message ||
+            json.msg ||
+            JSON.stringify(json).slice(0, 300)
+          reject(new Error(`Image API request failed: ${apiRes.statusCode} ${message}`))
           return
         }
 
