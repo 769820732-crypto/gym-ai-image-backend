@@ -4,6 +4,7 @@ const https = require("https")
 const PORT = Number(process.env.PORT || 8787)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com"
+const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-1"
 
 function sendJson(res, statusCode, data) {
   const body = JSON.stringify(data)
@@ -40,7 +41,7 @@ function readJson(req) {
 function callOpenAIImage({ prompt, size }) {
   const baseUrl = new URL(OPENAI_BASE_URL)
   const payload = JSON.stringify({
-    model: "gpt-image-1",
+    model: IMAGE_MODEL,
     prompt,
     size: size || "1024x1024",
     quality: "low",
@@ -143,7 +144,8 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         service: "gym-ai-image-backend",
         hasApiKey: Boolean(OPENAI_API_KEY),
-        baseUrl: OPENAI_BASE_URL
+        baseUrl: OPENAI_BASE_URL,
+        imageModel: IMAGE_MODEL
       })
       return
     }
