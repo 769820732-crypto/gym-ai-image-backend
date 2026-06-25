@@ -11,7 +11,7 @@ function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type"
   })
   res.end(body)
@@ -23,7 +23,7 @@ function readJson(req) {
     req.on("data", chunk => {
       body += chunk
       if (body.length > 1024 * 1024) {
-        reject(new Error("请求体过大"))
+        reject(new Error("Request body is too large."))
         req.destroy()
       }
     })
@@ -31,15 +31,24 @@ function readJson(req) {
       try {
         resolve(body ? JSON.parse(body) : {})
       } catch (error) {
-        reject(new Error("请求 JSON 格式错误"))
+        reject(new Error("Invalid JSON request body."))
       }
     })
     req.on("error", reject)
   })
 }
 
-function callOpenAIImage({ prompt, size }) {
+function normalizeBaseUrl() {
   const baseUrl = new URL(OPENAI_BASE_URL)
+  return {
+    hostname: baseUrl.hostname,
+    port: baseUrl.port || 443,
+    pathname: baseUrl.pathname.replace(/\/$/, "")
+  }
+}
+
+function callImageApi({ prompt, size }) {
+  const baseUrl = normalizeBaseUrl()
   const payload = JSON.stringify({
     model: IMAGE_MODEL,
     prompt,
@@ -50,8 +59,8 @@ function callOpenAIImage({ prompt, size }) {
 
   const options = {
     hostname: baseUrl.hostname,
-    port: baseUrl.port || 443,
-    path: "/v1/images/generations",
+    port: baseUrl.port,
+    path: `${baseUrl.pathname}/v1/images/generations`,
     method: "POST",
     headers: {
       Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -72,12 +81,12 @@ function callOpenAIImage({ prompt, size }) {
         try {
           json = JSON.parse(body)
         } catch (error) {
-          reject(new Error(`OpenAI 返回内容无法解析：${body.slice(0, 300)}`))
+          reject(new Error(`Image API returned invalid JSON: ${body.slice(0, 300)}`))
           return
         }
 
         if (apiRes.statusCode < 200 || apiRes.statusCode >= 300) {
-          reject(new Error(json.error ? json.error.message : `OpenAI 请求失败：${apiRes.statusCode}`))
+          reject(new Error(json.error ? json.error.message : `Image API request failed: ${apiRes.statusCode}`))
           return
         }
 
@@ -86,7 +95,7 @@ function callOpenAIImage({ prompt, size }) {
     })
 
     req.on("timeout", () => {
-      req.destroy(new Error("连接图片生成接口超时。请检查当前网络是否能访问 OpenAI API，或配置可用的 OPENAI_BASE_URL 中转地址。"))
+      req.destroy(new Error("Image API request timed out."))
     })
     req.on("error", reject)
     req.write(payload)
@@ -94,11 +103,21 @@ function callOpenAIImage({ prompt, size }) {
   })
 }
 
+function getImageFromResult(result) {
+  const firstData = result.data && result.data[0] ? result.data[0] : {}
+  const firstImage = result.images && result.images[0] ? result.images[0] : {}
+
+  return {
+    imageBase64: firstData.b64_json || firstImage.b64_json || "",
+    imageUrl: firstData.url || firstImage.url || ""
+  }
+}
+
 async function handleGenerateImage(req, res) {
   if (!OPENAI_API_KEY) {
     sendJson(res, 500, {
       ok: false,
-      error: "服务端未配置 OPENAI_API_KEY"
+      error: "Server missing OPENAI_API_KEY."
     })
     return
   }
@@ -110,25 +129,26 @@ async function handleGenerateImage(req, res) {
   if (!prompt) {
     sendJson(res, 400, {
       ok: false,
-      error: "缺少 prompt"
+      error: "Missing prompt."
     })
     return
   }
 
-  const result = await callOpenAIImage({ prompt, size })
-  const imageBase64 = result.data && result.data[0] ? result.data[0].b64_json : ""
+  const result = await callImageApi({ prompt, size })
+  const { imageBase64, imageUrl } = getImageFromResult(result)
 
-  if (!imageBase64) {
+  if (!imageBase64 && !imageUrl) {
     sendJson(res, 502, {
       ok: false,
-      error: "OpenAI 未返回图片"
+      error: "Image API did not return an image."
     })
     return
   }
 
   sendJson(res, 200, {
     ok: true,
-    imageBase64
+    imageBase64,
+    imageUrl
   })
 }
 
@@ -157,7 +177,7 @@ const server = http.createServer(async (req, res) => {
 
     sendJson(res, 404, {
       ok: false,
-      error: "接口不存在"
+      error: "Route not found."
     })
   } catch (error) {
     sendJson(res, 500, {
