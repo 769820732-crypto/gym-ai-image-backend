@@ -5,6 +5,8 @@ const PORT = Number(process.env.PORT || 8787)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com"
 const IMAGE_MODEL = process.env.IMAGE_MODEL || "Kwai-Kolors/Kolors"
+const NEGATIVE_PROMPT = process.env.NEGATIVE_PROMPT ||
+  "low quality, cheap poster, amateur phone photo, ordinary group class, centered frontal portrait, direct eye contact, cluttered background, messy room, ugly lighting, harsh shadows, text, watermark, logo, QR code, phone number, readable words, cartoon, illustration, plastic skin, distorted hands, distorted feet, blurry face, bad anatomy, vulgar exposure, exaggerated muscles"
 
 function sendJson(res, statusCode, data) {
   const body = JSON.stringify(data)
@@ -52,10 +54,11 @@ function callImageApi({ prompt, size }) {
   const payload = JSON.stringify({
     model: IMAGE_MODEL,
     prompt,
+    negative_prompt: NEGATIVE_PROMPT,
     image_size: size || "1024x1024",
     batch_size: 1,
-    num_inference_steps: 20,
-    guidance_scale: 7.5,
+    num_inference_steps: 28,
+    guidance_scale: 8,
     size: size || "1024x1024",
     quality: "low",
     n: 1
