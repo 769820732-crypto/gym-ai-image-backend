@@ -3,10 +3,31 @@ const https = require("https")
 
 const PORT = Number(process.env.PORT || 8787)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com"
-const IMAGE_MODEL = process.env.IMAGE_MODEL || "black-forest-labs/FLUX.1-Kontext-pro"
+const RAW_OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.siliconflow.cn"
+const OPENAI_BASE_URL = normalizeProviderBaseUrl(RAW_OPENAI_BASE_URL)
+const RAW_IMAGE_MODEL = process.env.IMAGE_MODEL || "Qwen/Qwen-Image"
+const IMAGE_MODEL = normalizeImageModel(RAW_IMAGE_MODEL)
 const NEGATIVE_PROMPT = process.env.NEGATIVE_PROMPT ||
   "low quality, cheap poster, amateur phone photo, ordinary group class, centered frontal portrait, direct eye contact, cluttered background, messy room, ugly lighting, harsh shadows, text, watermark, logo, QR code, phone number, readable words, cartoon, illustration, plastic skin, distorted hands, distorted feet, blurry face, bad anatomy, vulgar exposure, exaggerated muscles"
+
+function normalizeProviderBaseUrl(baseUrl) {
+  const trimmedUrl = String(baseUrl || "").replace(/\/$/, "")
+  if (trimmedUrl === "https://api.siliconflow.com") {
+    return "https://api.siliconflow.cn"
+  }
+  return trimmedUrl
+}
+
+function normalizeImageModel(model) {
+  const trimmedModel = String(model || "").trim()
+  if (
+    OPENAI_BASE_URL.includes("api.siliconflow.cn") &&
+    trimmedModel.startsWith("black-forest-labs/FLUX.1-Kontext")
+  ) {
+    return "Qwen/Qwen-Image"
+  }
+  return trimmedModel || "Qwen/Qwen-Image"
+}
 
 function sendJson(res, statusCode, data) {
   const body = JSON.stringify(data)
@@ -51,18 +72,26 @@ function normalizeBaseUrl() {
 
 function callImageApi({ prompt, size }) {
   const baseUrl = normalizeBaseUrl()
-  const payload = JSON.stringify({
+  const imageSize = size || "1024x1024"
+  const requestBody = OPENAI_BASE_URL.includes("api.siliconflow.cn")
+    ? {
+      model: IMAGE_MODEL,
+      prompt,
+      image_size: imageSize
+    }
+    : {
     model: IMAGE_MODEL,
     prompt,
     negative_prompt: NEGATIVE_PROMPT,
-    image_size: size || "1024x1024",
+    image_size: imageSize,
     batch_size: 1,
     num_inference_steps: 28,
     guidance_scale: 8,
-    size: size || "1024x1024",
+    size: imageSize,
     quality: "low",
     n: 1
-  })
+  }
+  const payload = JSON.stringify(requestBody)
 
   const options = {
     hostname: baseUrl.hostname,
@@ -218,7 +247,9 @@ const server = http.createServer(async (req, res) => {
         service: "gym-ai-image-backend",
         hasApiKey: Boolean(OPENAI_API_KEY),
         baseUrl: OPENAI_BASE_URL,
-        imageModel: IMAGE_MODEL
+        imageModel: IMAGE_MODEL,
+        configuredBaseUrl: RAW_OPENAI_BASE_URL,
+        configuredImageModel: RAW_IMAGE_MODEL
       })
       return
     }
