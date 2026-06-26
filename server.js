@@ -122,6 +122,43 @@ function getImageFromResult(result) {
   }
 }
 
+function downloadImageAsBase64(imageUrl) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(imageUrl)
+    const client = url.protocol === "https:" ? https : http
+
+    const req = client.get(url, { timeout: 120000 }, (imageRes) => {
+      if (imageRes.statusCode < 200 || imageRes.statusCode >= 300) {
+        reject(new Error(`Image download failed: ${imageRes.statusCode}`))
+        imageRes.resume()
+        return
+      }
+
+      const chunks = []
+      let totalLength = 0
+
+      imageRes.on("data", chunk => {
+        totalLength += chunk.length
+        if (totalLength > 15 * 1024 * 1024) {
+          reject(new Error("Generated image is too large."))
+          req.destroy()
+          return
+        }
+        chunks.push(chunk)
+      })
+
+      imageRes.on("end", () => {
+        resolve(Buffer.concat(chunks).toString("base64"))
+      })
+    })
+
+    req.on("timeout", () => {
+      req.destroy(new Error("Image download timed out."))
+    })
+    req.on("error", reject)
+  })
+}
+
 async function handleGenerateImage(req, res) {
   if (!OPENAI_API_KEY) {
     sendJson(res, 500, {
@@ -144,9 +181,11 @@ async function handleGenerateImage(req, res) {
   }
 
   const result = await callImageApi({ prompt, size })
-  const { imageBase64, imageUrl } = getImageFromResult(result)
+  const image = getImageFromResult(result)
+  const imageBase64 = image.imageBase64 || (image.imageUrl ? await downloadImageAsBase64(image.imageUrl) : "")
+  const imageUrl = image.imageUrl
 
-  if (!imageBase64 && !imageUrl) {
+  if (!imageBase64) {
     sendJson(res, 502, {
       ok: false,
       error: "Image API did not return an image."
