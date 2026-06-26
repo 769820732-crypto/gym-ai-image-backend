@@ -4,7 +4,7 @@ const https = require("https")
 const PORT = Number(process.env.PORT || 8787)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com"
-const IMAGE_MODEL = process.env.IMAGE_MODEL || "Kwai-Kolors/Kolors"
+const IMAGE_MODEL = process.env.IMAGE_MODEL || "black-forest-labs/FLUX.1-Kontext-pro"
 const NEGATIVE_PROMPT = process.env.NEGATIVE_PROMPT ||
   "low quality, cheap poster, amateur phone photo, ordinary group class, centered frontal portrait, direct eye contact, cluttered background, messy room, ugly lighting, harsh shadows, text, watermark, logo, QR code, phone number, readable words, cartoon, illustration, plastic skin, distorted hands, distorted feet, blurry face, bad anatomy, vulgar exposure, exaggerated muscles"
 
