@@ -205,12 +205,14 @@ async function handleGenerateImage(req, res) {
 
 const server = http.createServer(async (req, res) => {
   try {
+    const requestPath = new URL(req.url, `http://${req.headers.host || "localhost"}`).pathname
+
     if (req.method === "OPTIONS") {
       sendJson(res, 200, { ok: true })
       return
     }
 
-    if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
+    if (req.method === "GET" && (requestPath === "/" || requestPath === "/health")) {
       sendJson(res, 200, {
         ok: true,
         service: "gym-ai-image-backend",
@@ -221,7 +223,7 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
-    if (req.method === "POST" && req.url === "/api/generate-image") {
+    if (req.method === "POST" && requestPath === "/api/generate-image") {
       await handleGenerateImage(req, res)
       return
     }
