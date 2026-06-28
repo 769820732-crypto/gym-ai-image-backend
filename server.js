@@ -7,6 +7,9 @@ const RAW_OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.siliconf
 const OPENAI_BASE_URL = normalizeProviderBaseUrl(RAW_OPENAI_BASE_URL)
 const RAW_IMAGE_MODEL = process.env.IMAGE_MODEL || "Qwen/Qwen-Image"
 const IMAGE_MODEL = normalizeImageModel(RAW_IMAGE_MODEL)
+const RAW_IMAGE_EDIT_MODEL = process.env.IMAGE_EDIT_MODEL || "Qwen/Qwen-Image-Edit-2509"
+const IMAGE_EDIT_MODEL = normalizeImageModel(RAW_IMAGE_EDIT_MODEL)
+const MAX_REQUEST_BYTES = Number(process.env.MAX_REQUEST_BYTES || 12 * 1024 * 1024)
 const NEGATIVE_PROMPT = process.env.NEGATIVE_PROMPT ||
   "low quality, cheap poster, amateur phone photo, ordinary group class, centered frontal portrait, direct eye contact, cluttered background, messy room, ugly lighting, harsh shadows, text, watermark, logo, QR code, phone number, readable words, cartoon, illustration, plastic skin, distorted hands, distorted feet, blurry face, bad anatomy, vulgar exposure, exaggerated muscles"
 
@@ -45,7 +48,7 @@ function readJson(req) {
     let body = ""
     req.on("data", chunk => {
       body += chunk
-      if (body.length > 1024 * 1024) {
+      if (body.length > MAX_REQUEST_BYTES) {
         reject(new Error("Request body is too large."))
         req.destroy()
       }
@@ -70,18 +73,33 @@ function normalizeBaseUrl() {
   }
 }
 
-function callImageApi({ prompt, size }) {
+function normalizeReferenceImage(imageBase64) {
+  const trimmedImage = String(imageBase64 || "").trim()
+  if (!trimmedImage) return ""
+  if (trimmedImage.startsWith("data:image/")) return trimmedImage
+  return `data:image/jpeg;base64,${trimmedImage}`
+}
+
+function callImageApi({ prompt, size, referenceImageBase64 }) {
   const baseUrl = normalizeBaseUrl()
   const imageSize = size || "1024x1024"
+  const referenceImage = normalizeReferenceImage(referenceImageBase64)
   const requestBody = OPENAI_BASE_URL.includes("api.siliconflow.cn")
-    ? {
+    ? referenceImage
+      ? {
+      model: IMAGE_EDIT_MODEL,
+      prompt,
+      image: normalizeReferenceImage(referenceImageBase64)
+    }
+      : {
       model: IMAGE_MODEL,
       prompt,
       image_size: imageSize
     }
     : {
-    model: IMAGE_MODEL,
+    model: referenceImage ? IMAGE_EDIT_MODEL : IMAGE_MODEL,
     prompt,
+    image: referenceImage || undefined,
     negative_prompt: NEGATIVE_PROMPT,
     image_size: imageSize,
     batch_size: 1,
@@ -203,6 +221,7 @@ async function handleGenerateImage(req, res) {
   const body = await readJson(req)
   const prompt = String(body.prompt || "").trim()
   const size = String(body.size || "1024x1024")
+  const referenceImageBase64 = String(body.referenceImageBase64 || body.inputImageBase64 || "").trim()
 
   if (!prompt) {
     sendJson(res, 400, {
@@ -212,7 +231,7 @@ async function handleGenerateImage(req, res) {
     return
   }
 
-  const result = await callImageApi({ prompt, size })
+  const result = await callImageApi({ prompt, size, referenceImageBase64 })
   const image = getImageFromResult(result)
   const imageBase64 = image.imageBase64 || (image.imageUrl ? await downloadImageAsBase64(image.imageUrl) : "")
   const imageUrl = image.imageUrl
@@ -248,8 +267,10 @@ const server = http.createServer(async (req, res) => {
         hasApiKey: Boolean(OPENAI_API_KEY),
         baseUrl: OPENAI_BASE_URL,
         imageModel: IMAGE_MODEL,
+        imageEditModel: IMAGE_EDIT_MODEL,
         configuredBaseUrl: RAW_OPENAI_BASE_URL,
-        configuredImageModel: RAW_IMAGE_MODEL
+        configuredImageModel: RAW_IMAGE_MODEL,
+        configuredImageEditModel: RAW_IMAGE_EDIT_MODEL
       })
       return
     }
