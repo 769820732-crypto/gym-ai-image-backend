@@ -18,8 +18,8 @@ $env:OPENAI_API_KEY="你的 OpenAI API Key"
 IMAGE_PROVIDER=volcengine
 ARK_API_KEY=你的火山方舟 API Key
 OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
-IMAGE_MODEL=seedream-4-0-250828
-IMAGE_EDIT_MODEL=seededit-3.0-i2i
+IMAGE_MODEL=doubao-seedream-4-0-250828
+IMAGE_EDIT_MODEL=doubao-seedream-4-0-250828
 ```
 
 说明：
@@ -29,6 +29,32 @@ IMAGE_EDIT_MODEL=seededit-3.0-i2i
 - `IMAGE_EDIT_MODEL` 用于用户上传门店图后的图生图/编辑链路。
 - 如果火山控制台给你的模型 ID 不同，以控制台开通的正式模型 ID 为准。
 - 不配置 `IMAGE_PROVIDER` 时，后端仍保持原来的 OpenAI 兼容模式，默认走硅基流动。
+
+## 接口安全配置
+
+后端支持可选访问令牌，防止公开部署后的图片生成接口被随意调用：
+
+```text
+BACKEND_ACCESS_TOKEN=一段足够长的随机字符串
+```
+
+配置后，请求 `POST /api/generate-image` 必须带其中一种请求头：
+
+```text
+Authorization: Bearer 一段足够长的随机字符串
+```
+
+或：
+
+```text
+X-Backend-Token: 一段足够长的随机字符串
+```
+
+注意：
+
+- `BACKEND_ACCESS_TOKEN` 只能放在后端环境变量里。
+- 不要把 `OPENAI_API_KEY`、`ARK_API_KEY` 或 `BACKEND_ACCESS_TOKEN` 写进小程序前端代码。
+- 如果暂时不配置 `BACKEND_ACCESS_TOKEN`，接口会保持旧行为，不做访问令牌校验。
 
 启动服务：
 

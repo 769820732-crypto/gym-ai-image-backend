@@ -1,10 +1,12 @@
 const http = require("http")
 const https = require("https")
+const crypto = require("crypto")
 
 const PORT = Number(process.env.PORT || 8787)
 const IMAGE_PROVIDER = normalizeImageProvider(process.env.IMAGE_PROVIDER)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const ARK_API_KEY = process.env.ARK_API_KEY
+const BACKEND_ACCESS_TOKEN = String(process.env.BACKEND_ACCESS_TOKEN || "").trim()
 const IMAGE_API_KEY = getProviderApiKey()
 const RAW_OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || getDefaultBaseUrl(IMAGE_PROVIDER)
 const OPENAI_BASE_URL = normalizeProviderBaseUrl(RAW_OPENAI_BASE_URL)
@@ -33,14 +35,14 @@ function getDefaultBaseUrl(provider = IMAGE_PROVIDER) {
 
 function getDefaultImageModel(provider = IMAGE_PROVIDER) {
   if (provider === "volcengine") {
-    return "seedream-4-0-250828"
+    return "doubao-seedream-4-0-250828"
   }
   return "Qwen/Qwen-Image"
 }
 
 function getDefaultImageEditModel(provider = IMAGE_PROVIDER) {
   if (provider === "volcengine") {
-    return "seededit-3.0-i2i"
+    return "doubao-seedream-4-0-250828"
   }
   return "Qwen/Qwen-Image-Edit-2509"
 }
@@ -80,6 +82,29 @@ function sendJson(res, statusCode, data) {
     "Access-Control-Allow-Headers": "Content-Type"
   })
   res.end(body)
+}
+
+function safeTokenEquals(actualToken, expectedToken) {
+  const actual = Buffer.from(String(actualToken || ""))
+  const expected = Buffer.from(String(expectedToken || ""))
+  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected)
+}
+
+function extractRequestToken(req) {
+  const headers = req && req.headers ? req.headers : {}
+  const explicitToken = headers["x-backend-token"]
+  const authorization = String(headers.authorization || "")
+
+  if (explicitToken) return String(explicitToken)
+  if (authorization.toLowerCase().startsWith("bearer ")) {
+    return authorization.slice("bearer ".length).trim()
+  }
+  return ""
+}
+
+function isGenerateRequestAuthorized(req) {
+  if (!BACKEND_ACCESS_TOKEN) return true
+  return safeTokenEquals(extractRequestToken(req), BACKEND_ACCESS_TOKEN)
 }
 
 function readJson(req) {
@@ -173,7 +198,8 @@ function buildVolcengineRequestBody({ prompt, size, referenceImages }) {
     model: hasReferenceImage ? IMAGE_EDIT_MODEL : IMAGE_MODEL,
     prompt,
     size: imageSize,
-    n: 1
+    n: 1,
+    watermark: false
   }
 
   if (hasReferenceImage) {
@@ -316,6 +342,14 @@ function downloadImageAsBase64(imageUrl) {
 }
 
 async function handleGenerateImage(req, res) {
+  if (!isGenerateRequestAuthorized(req)) {
+    sendJson(res, 401, {
+      ok: false,
+      error: "Unauthorized image generation request."
+    })
+    return
+  }
+
   if (!IMAGE_API_KEY) {
     sendJson(res, 500, {
       ok: false,
@@ -369,6 +403,7 @@ function getHealthInfo() {
     baseUrl: OPENAI_BASE_URL,
     imageModel: IMAGE_MODEL,
     imageEditModel: IMAGE_EDIT_MODEL,
+    hasBackendAccessToken: Boolean(BACKEND_ACCESS_TOKEN),
     configuredBaseUrl: RAW_OPENAI_BASE_URL,
     configuredImageModel: RAW_IMAGE_MODEL,
     configuredImageEditModel: RAW_IMAGE_EDIT_MODEL
@@ -416,6 +451,7 @@ module.exports = {
   buildImageApiRequest,
   getHealthInfo,
   getImageFromResult,
+  isGenerateRequestAuthorized,
   normalizeReferenceImages,
   server
 }
