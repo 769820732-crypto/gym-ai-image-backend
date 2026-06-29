@@ -40,7 +40,7 @@ function getDefaultImageModel(provider = IMAGE_PROVIDER) {
 
 function getDefaultImageEditModel(provider = IMAGE_PROVIDER) {
   if (provider === "volcengine") {
-    return "seededit-3-0-i2i-250628"
+    return "seededit-3.0-i2i"
   }
   return "Qwen/Qwen-Image-Edit-2509"
 }

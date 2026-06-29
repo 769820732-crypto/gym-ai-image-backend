@@ -19,7 +19,7 @@ IMAGE_PROVIDER=volcengine
 ARK_API_KEY=你的火山方舟 API Key
 OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 IMAGE_MODEL=seedream-4-0-250828
-IMAGE_EDIT_MODEL=seededit-3-0-i2i-250628
+IMAGE_EDIT_MODEL=seededit-3.0-i2i
 ```
 
 说明：

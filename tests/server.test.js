@@ -5,7 +5,7 @@ process.env.NODE_ENV = "test"
 process.env.IMAGE_PROVIDER = "volcengine"
 process.env.ARK_API_KEY = "ark-test-key"
 process.env.IMAGE_MODEL = "seedream-4-0-250828"
-process.env.IMAGE_EDIT_MODEL = "seededit-3-0-i2i-250628"
+process.env.IMAGE_EDIT_MODEL = "seededit-3.0-i2i"
 
 const {
   buildImageApiRequest,
@@ -23,7 +23,7 @@ const request = buildImageApiRequest({
 assert.strictEqual(request.options.hostname, "ark.cn-beijing.volces.com")
 assert.strictEqual(request.options.path, "/api/v3/images/generations")
 assert.strictEqual(request.options.headers.Authorization, "Bearer ark-test-key")
-assert.strictEqual(request.body.model, "seededit-3-0-i2i-250628")
+assert.strictEqual(request.body.model, "seededit-3.0-i2i")
 assert.strictEqual(request.body.prompt, "生成健身房装修效果图")
 assert.strictEqual(request.body.image, referenceImage)
 assert.strictEqual(request.body.size, "2048x2048")
@@ -34,7 +34,7 @@ const health = getHealthInfo()
 assert.strictEqual(health.provider, "volcengine")
 assert.strictEqual(health.hasApiKey, true)
 assert.strictEqual(health.baseUrl, "https://ark.cn-beijing.volces.com/api/v3")
-assert.strictEqual(health.imageEditModel, "seededit-3-0-i2i-250628")
+assert.strictEqual(health.imageEditModel, "seededit-3.0-i2i")
 
 assert.deepStrictEqual(getImageFromResult({
   data: [{ b64_json: "base64-image" }]
@@ -69,6 +69,6 @@ const defaultModelHealth = JSON.parse(execFileSync(process.execPath, [
 }))
 
 assert.strictEqual(defaultModelHealth.imageModel, "seedream-4-0-250828")
-assert.strictEqual(defaultModelHealth.imageEditModel, "seededit-3-0-i2i-250628")
+assert.strictEqual(defaultModelHealth.imageEditModel, "seededit-3.0-i2i")
 
 console.log("server provider tests passed")
