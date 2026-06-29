@@ -32,6 +32,18 @@ assert.strictEqual(request.body.n, 1)
 assert.strictEqual(request.body.watermark, false)
 assert.ok(!("image2" in request.body), "volcengine first pass should send the primary reference image only")
 
+const legacySquareRequest = buildImageApiRequest({
+  prompt: "鐢熸垚鍋ヨ韩鎴胯淇晥鏋滃浘",
+  size: "1024x1024",
+  referenceImagesBase64: [referenceImage]
+})
+
+assert.strictEqual(
+  legacySquareRequest.body.size,
+  "2K",
+  "volcengine image-to-image requests should not force square output because it changes the room layout"
+)
+
 const health = getHealthInfo()
 assert.strictEqual(health.provider, "volcengine")
 assert.strictEqual(health.hasApiKey, true)

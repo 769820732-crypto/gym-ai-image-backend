@@ -191,9 +191,15 @@ function buildOpenAICompatibleRequestBody({ prompt, size, referenceImages }) {
   }
 }
 
+function resolveVolcengineImageSize(size, hasReferenceImage) {
+  if (!hasReferenceImage) return size || "1024x1024"
+  if (!size || size === "1024x1024") return "2K"
+  return size
+}
+
 function buildVolcengineRequestBody({ prompt, size, referenceImages }) {
-  const imageSize = size || "1024x1024"
   const hasReferenceImage = Boolean(referenceImages.length)
+  const imageSize = resolveVolcengineImageSize(size, hasReferenceImage)
   const body = {
     model: hasReferenceImage ? IMAGE_EDIT_MODEL : IMAGE_MODEL,
     prompt,
