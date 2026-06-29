@@ -10,6 +10,26 @@
 $env:OPENAI_API_KEY="你的 OpenAI API Key"
 ```
 
+## 火山方舟 / 豆包图像模型配置
+
+如果要把装修效果图从硅基流动 Qwen 切到火山方舟 Seedream/SeedEdit，在 Railway 的 Variables 里配置：
+
+```text
+IMAGE_PROVIDER=volcengine
+ARK_API_KEY=你的火山方舟 API Key
+OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+IMAGE_MODEL=seedream-4-0-250828
+IMAGE_EDIT_MODEL=seededit-3-0-i2i-250628
+```
+
+说明：
+
+- `IMAGE_PROVIDER=volcengine` 会让后端请求火山方舟 `/api/v3/images/generations`。
+- `ARK_API_KEY` 只放在后端，不要放进小程序前端。
+- `IMAGE_EDIT_MODEL` 用于用户上传门店图后的图生图/编辑链路。
+- 如果火山控制台给你的模型 ID 不同，以控制台开通的正式模型 ID 为准。
+- 不配置 `IMAGE_PROVIDER` 时，后端仍保持原来的 OpenAI 兼容模式，默认走硅基流动。
+
 启动服务：
 
 ```powershell
@@ -78,4 +98,3 @@ wx.request({
   }
 })
 ```
-
