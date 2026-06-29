@@ -203,7 +203,7 @@ function buildVolcengineRequestBody({ prompt, size, referenceImages }) {
   }
 
   if (hasReferenceImage) {
-    body.image = referenceImages[0]
+    body.image = referenceImages
   }
 
   return body

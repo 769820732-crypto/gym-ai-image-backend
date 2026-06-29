@@ -14,10 +14,11 @@ const {
 } = require("../server")
 
 const referenceImage = "data:image/jpeg;base64,abc123"
+const secondReferenceImage = "data:image/jpeg;base64,def456"
 const request = buildImageApiRequest({
   prompt: "生成健身房装修效果图",
   size: "2048x2048",
-  referenceImagesBase64: [referenceImage]
+  referenceImagesBase64: [referenceImage, secondReferenceImage]
 })
 
 assert.strictEqual(request.options.hostname, "ark.cn-beijing.volces.com")
@@ -25,7 +26,7 @@ assert.strictEqual(request.options.path, "/api/v3/images/generations")
 assert.strictEqual(request.options.headers.Authorization, "Bearer ark-test-key")
 assert.strictEqual(request.body.model, "doubao-seedream-4-0-250828")
 assert.strictEqual(request.body.prompt, "生成健身房装修效果图")
-assert.strictEqual(request.body.image, referenceImage)
+assert.deepStrictEqual(request.body.image, [referenceImage, secondReferenceImage])
 assert.strictEqual(request.body.size, "2048x2048")
 assert.strictEqual(request.body.n, 1)
 assert.strictEqual(request.body.watermark, false)

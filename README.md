@@ -27,6 +27,7 @@ IMAGE_EDIT_MODEL=doubao-seedream-4-0-250828
 - `IMAGE_PROVIDER=volcengine` 会让后端请求火山方舟 `/api/v3/images/generations`。
 - `ARK_API_KEY` 只放在后端，不要放进小程序前端。
 - `IMAGE_EDIT_MODEL` 用于用户上传门店图后的图生图/编辑链路。
+- 用户上传 1-3 张门店参考图时，Volcengine 链路会把这些图片作为 `image` 数组传给 Seedream，帮助模型同时参考多个视角。
 - 如果火山控制台给你的模型 ID 不同，以控制台开通的正式模型 ID 为准。
 - 不配置 `IMAGE_PROVIDER` 时，后端仍保持原来的 OpenAI 兼容模式，默认走硅基流动。
 
