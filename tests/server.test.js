@@ -129,6 +129,14 @@ assert.ok(
   analysisRequest.body.input[0].content[0].text.includes("bodyFatChange"),
   "analysis prompt should request body data fields"
 )
+assert.ok(
+  analysisRequest.body.input[0].content[0].text.includes("教练口吻"),
+  "analysis prompt should ask for coach-style copy"
+)
+assert.ok(
+  analysisRequest.body.input[0].content[0].text.includes("体脂率由8.0%降至5.6%"),
+  "analysis prompt should include concise field-copy examples"
+)
 
 assert.deepStrictEqual(extractMemberImageAnalysis({
   choices: [

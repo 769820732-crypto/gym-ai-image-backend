@@ -385,16 +385,28 @@ function buildMemberAnalysisPrompt(memberName) {
 
 任务：
 1. 尽量识别体脂率变化、体重变化、体态变化。
-2. 如果图片里只有单次数据，请用“当前为...”描述，不要编造上次数据。
-3. 如果看不清或图片没有对应信息，对应字段返回空字符串。
-4. 只返回 JSON，不要返回 Markdown。
+2. 输出要像教练写给会员月总结的短句，专业、自然、正向，不要像机器读数。
+3. 如果有前后对比，请优先写成“由 X 降至/提升至 Y”“较上次下降/提升 X”。
+4. 如果图片里只有单次数据，请用“当前为...”描述，不要编造上次数据。
+5. 如果看不清或图片没有对应信息，对应字段返回空字符串。
+6. 字段内容要短，bodyFatChange、weightChange、postureChange 每项尽量控制在 35 个中文字以内。
+7. 只返回 JSON，不要返回 Markdown。
+
+示例风格：
+- bodyFatChange: "体脂率由8.0%降至5.6%，下降明显"
+- weightChange: "体重由73.9kg降至73.2kg，控制稳定"
+- postureChange: "未见明确体态评估，建议结合正侧面照判断"
+
+不要这样写：
+- "体脂率从历史记录早期的8.0%波动后，显著下降至..."
+- "图片显示该会员非常优秀"
 
 JSON 字段：
 {
-  "bodyFatChange": "体脂率变化结论",
-  "weightChange": "体重变化结论",
-  "postureChange": "体态变化结论",
-  "analysisSummary": "给教练看的简短分析摘要，50字以内"
+  "bodyFatChange": "教练口吻的体脂率变化短句",
+  "weightChange": "教练口吻的体重变化短句",
+  "postureChange": "教练口吻的体态变化短句，没有体态信息则留空",
+  "analysisSummary": "给教练看的简短分析摘要，60字以内"
 }`
 }
 
@@ -517,8 +529,8 @@ function extractJsonObject(text) {
   }
 }
 
-function normalizeAnalysisText(value) {
-  return String(value || "").trim().slice(0, 200)
+function normalizeAnalysisText(value, maxLength = 200) {
+  return String(value || "").trim().slice(0, maxLength)
 }
 
 function extractMemberImageAnalysis(result) {
@@ -536,10 +548,10 @@ function extractMemberImageAnalysis(result) {
   const parsed = extractJsonObject(content)
 
   return {
-    bodyFatChange: normalizeAnalysisText(parsed.bodyFatChange),
-    weightChange: normalizeAnalysisText(parsed.weightChange),
-    postureChange: normalizeAnalysisText(parsed.postureChange),
-    analysisSummary: normalizeAnalysisText(parsed.analysisSummary)
+    bodyFatChange: normalizeAnalysisText(parsed.bodyFatChange, 80),
+    weightChange: normalizeAnalysisText(parsed.weightChange, 80),
+    postureChange: normalizeAnalysisText(parsed.postureChange, 80),
+    analysisSummary: normalizeAnalysisText(parsed.analysisSummary, 120)
   }
 }
 
@@ -589,12 +601,10 @@ async function handleGenerateImage(req, res) {
     return
   }
 
-  if (!MEMBER_ANALYSIS_API_KEY) {
+  if (!IMAGE_API_KEY) {
     sendJson(res, 500, {
       ok: false,
-      error: MEMBER_ANALYSIS_PROVIDER === "aliyun"
-        ? "Server missing ALIYUN_API_KEY."
-        : (MEMBER_ANALYSIS_PROVIDER === "volcengine" ? "Server missing ARK_API_KEY." : "Server missing OPENAI_API_KEY.")
+      error: IMAGE_PROVIDER === "volcengine" ? "Server missing ARK_API_KEY." : "Server missing OPENAI_API_KEY."
     })
     return
   }
@@ -644,10 +654,12 @@ async function handleAnalyzeMemberImages(req, res) {
     return
   }
 
-  if (!IMAGE_API_KEY) {
+  if (!MEMBER_ANALYSIS_API_KEY) {
     sendJson(res, 500, {
       ok: false,
-      error: IMAGE_PROVIDER === "volcengine" ? "Server missing ARK_API_KEY." : "Server missing OPENAI_API_KEY."
+      error: MEMBER_ANALYSIS_PROVIDER === "aliyun"
+        ? "Server missing ALIYUN_API_KEY."
+        : (MEMBER_ANALYSIS_PROVIDER === "volcengine" ? "Server missing ARK_API_KEY." : "Server missing OPENAI_API_KEY.")
     })
     return
   }
