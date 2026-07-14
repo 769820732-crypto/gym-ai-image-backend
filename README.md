@@ -20,7 +20,6 @@ ARK_API_KEY=你的火山方舟 API Key
 OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 IMAGE_MODEL=doubao-seedream-4-0-250828
 IMAGE_EDIT_MODEL=doubao-seedream-4-0-250828
-VISION_MODEL=doubao-1-5-vision-pro-32k
 ```
 
 说明：
@@ -28,10 +27,26 @@ VISION_MODEL=doubao-1-5-vision-pro-32k
 - `IMAGE_PROVIDER=volcengine` 会让后端请求火山方舟 `/api/v3/images/generations`。
 - `ARK_API_KEY` 只放在后端，不要放进小程序前端。
 - `IMAGE_EDIT_MODEL` 用于用户上传门店图后的图生图/编辑链路。
-- `VISION_MODEL` 用于会员月总结里的体测图、围度图、体态图识别分析。
 - 用户上传 1-3 张门店参考图时，Volcengine 链路会把这些图片作为 `image` 数组传给 Seedream，帮助模型同时参考多个视角。
 - 如果火山控制台给你的模型 ID 不同，以控制台开通的正式模型 ID 为准。
 - 不配置 `IMAGE_PROVIDER` 时，后端仍保持原来的 OpenAI 兼容模式，默认走硅基流动。
+
+## 会员月总结图片分析配置
+
+会员月总结里的体测图、围度图、体态图识别可以单独使用阿里云百炼，不影响火山方舟装修效果图生成：
+
+```text
+MEMBER_ANALYSIS_PROVIDER=aliyun
+ALIYUN_API_KEY=你的阿里云百炼 API Key
+MEMBER_ANALYSIS_MODEL=qwen3.6-plus
+```
+
+说明：
+
+- `MEMBER_ANALYSIS_PROVIDER=aliyun` 只影响 `/api/analyze-member-images`。
+- `ALIYUN_API_KEY` 只放在后端，不要放进小程序前端。
+- `MEMBER_ANALYSIS_MODEL` 建议先用在线体验验证过的视觉理解模型。
+- `/api/generate-image` 仍继续使用 `IMAGE_PROVIDER`、`IMAGE_MODEL` 和 `IMAGE_EDIT_MODEL`。
 
 ## 接口安全配置
 

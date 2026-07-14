@@ -173,4 +173,33 @@ assert.deepStrictEqual(extractMemberImageAnalysis({
   analysisSummary: "response-summary"
 })
 
+const aliyunAnalysisRequest = JSON.parse(execFileSync(process.execPath, [
+  "-e",
+  "process.env.IMAGE_PROVIDER='volcengine';" +
+    "process.env.ARK_API_KEY='ark-test-key';" +
+    "process.env.MEMBER_ANALYSIS_PROVIDER='aliyun';" +
+    "process.env.ALIYUN_API_KEY='aliyun-test-key';" +
+    "process.env.MEMBER_ANALYSIS_MODEL='qwen3.6-plus';" +
+    "const {buildMemberImageAnalysisApiRequest,getHealthInfo}=require('./server');" +
+    "const request=buildMemberImageAnalysisApiRequest({imagesBase64:['data:image/jpeg;base64,abc123'],memberName:'member-a'});" +
+    "console.log(JSON.stringify({request,health:getHealthInfo()}));"
+], {
+  cwd: __dirname + "/..",
+  encoding: "utf8"
+}))
+
+assert.strictEqual(aliyunAnalysisRequest.request.options.hostname, "dashscope.aliyuncs.com")
+assert.strictEqual(aliyunAnalysisRequest.request.options.path, "/compatible-mode/v1/chat/completions")
+assert.strictEqual(aliyunAnalysisRequest.request.options.headers.Authorization, "Bearer aliyun-test-key")
+assert.strictEqual(aliyunAnalysisRequest.request.body.model, "qwen3.6-plus")
+assert.ok(aliyunAnalysisRequest.request.body.messages[0].content.some(item => item.type === "text"))
+assert.strictEqual(
+  aliyunAnalysisRequest.request.body.messages[0].content.filter(item => item.type === "image_url").length,
+  1,
+  "aliyun analysis request should send uploaded image as image_url content"
+)
+assert.strictEqual(aliyunAnalysisRequest.health.memberAnalysisProvider, "aliyun")
+assert.strictEqual(aliyunAnalysisRequest.health.memberAnalysisModel, "qwen3.6-plus")
+assert.ok(!JSON.stringify(aliyunAnalysisRequest.health).includes("aliyun-test-key"))
+
 console.log("server provider tests passed")

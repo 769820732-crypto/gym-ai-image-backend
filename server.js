@@ -6,8 +6,11 @@ const PORT = Number(process.env.PORT || 8787)
 const IMAGE_PROVIDER = normalizeImageProvider(process.env.IMAGE_PROVIDER)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const ARK_API_KEY = process.env.ARK_API_KEY
+const ALIYUN_API_KEY = process.env.ALIYUN_API_KEY
 const BACKEND_ACCESS_TOKEN = String(process.env.BACKEND_ACCESS_TOKEN || "").trim()
 const IMAGE_API_KEY = getProviderApiKey()
+const MEMBER_ANALYSIS_PROVIDER = normalizeMemberAnalysisProvider(process.env.MEMBER_ANALYSIS_PROVIDER)
+const MEMBER_ANALYSIS_API_KEY = getMemberAnalysisApiKey()
 const RAW_OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || getDefaultBaseUrl(IMAGE_PROVIDER)
 const OPENAI_BASE_URL = normalizeProviderBaseUrl(RAW_OPENAI_BASE_URL)
 const RAW_IMAGE_MODEL = process.env.IMAGE_MODEL || getDefaultImageModel(IMAGE_PROVIDER)
@@ -16,6 +19,8 @@ const RAW_IMAGE_EDIT_MODEL = process.env.IMAGE_EDIT_MODEL || getDefaultImageEdit
 const IMAGE_EDIT_MODEL = normalizeImageModel(RAW_IMAGE_EDIT_MODEL)
 const RAW_VISION_MODEL = process.env.VISION_MODEL || getDefaultVisionModel(IMAGE_PROVIDER)
 const VISION_MODEL = normalizeVisionModel(RAW_VISION_MODEL)
+const RAW_MEMBER_ANALYSIS_MODEL = process.env.MEMBER_ANALYSIS_MODEL || getDefaultMemberAnalysisModel(MEMBER_ANALYSIS_PROVIDER)
+const MEMBER_ANALYSIS_MODEL = normalizeMemberAnalysisModel(RAW_MEMBER_ANALYSIS_MODEL)
 const MAX_REQUEST_BYTES = Number(process.env.MAX_REQUEST_BYTES || 20 * 1024 * 1024)
 const NEGATIVE_PROMPT = process.env.NEGATIVE_PROMPT ||
   "low quality, cheap poster, amateur phone photo, ordinary group class, centered frontal portrait, direct eye contact, cluttered background, messy room, ugly lighting, harsh shadows, text, watermark, logo, QR code, phone number, readable words, cartoon, illustration, plastic skin, distorted hands, distorted feet, blurry face, bad anatomy, vulgar exposure, exaggerated muscles"
@@ -26,6 +31,14 @@ function normalizeImageProvider(provider) {
     return "volcengine"
   }
   return "openai-compatible"
+}
+
+function normalizeMemberAnalysisProvider(provider) {
+  const normalizedProvider = String(provider || IMAGE_PROVIDER || "openai-compatible").trim().toLowerCase()
+  if (["aliyun", "bailian", "dashscope"].includes(normalizedProvider)) {
+    return "aliyun"
+  }
+  return normalizeImageProvider(normalizedProvider)
 }
 
 function getDefaultBaseUrl(provider = IMAGE_PROVIDER) {
@@ -56,11 +69,25 @@ function getDefaultVisionModel(provider = IMAGE_PROVIDER) {
   return "gpt-4o-mini"
 }
 
+function getDefaultMemberAnalysisModel(provider = MEMBER_ANALYSIS_PROVIDER) {
+  if (provider === "aliyun") {
+    return "qwen3.6-plus"
+  }
+  return getDefaultVisionModel(provider)
+}
+
 function getProviderApiKey(provider = IMAGE_PROVIDER) {
   if (provider === "volcengine") {
     return ARK_API_KEY || OPENAI_API_KEY
   }
   return OPENAI_API_KEY
+}
+
+function getMemberAnalysisApiKey(provider = MEMBER_ANALYSIS_PROVIDER) {
+  if (provider === "aliyun") {
+    return ALIYUN_API_KEY
+  }
+  return getProviderApiKey(provider)
 }
 
 function normalizeProviderBaseUrl(baseUrl) {
@@ -84,6 +111,21 @@ function normalizeImageModel(model) {
 
 function normalizeVisionModel(model) {
   return String(model || "").trim() || getDefaultVisionModel()
+}
+
+function normalizeMemberAnalysisModel(model) {
+  return String(model || "").trim() || getDefaultMemberAnalysisModel()
+}
+
+function getMemberAnalysisBaseUrl() {
+  if (MEMBER_ANALYSIS_PROVIDER === "aliyun") {
+    return {
+      hostname: "dashscope.aliyuncs.com",
+      port: 443,
+      pathname: "/compatible-mode"
+    }
+  }
+  return normalizeBaseUrl()
 }
 
 function sendJson(res, statusCode, data) {
@@ -357,11 +399,11 @@ JSON 字段：
 }
 
 function buildMemberImageAnalysisApiRequest({ imagesBase64, memberName }) {
-  const baseUrl = normalizeBaseUrl()
+  const baseUrl = getMemberAnalysisBaseUrl()
   const images = normalizeReferenceImages(imagesBase64)
-  const body = IMAGE_PROVIDER === "volcengine"
+  const body = MEMBER_ANALYSIS_PROVIDER === "volcengine"
     ? {
-      model: VISION_MODEL,
+      model: MEMBER_ANALYSIS_MODEL,
       input: [
         {
           role: "user",
@@ -380,7 +422,7 @@ function buildMemberImageAnalysisApiRequest({ imagesBase64, memberName }) {
       temperature: 0.2
     }
     : {
-      model: VISION_MODEL,
+      model: MEMBER_ANALYSIS_MODEL,
       messages: [
         {
           role: "user",
@@ -404,10 +446,10 @@ function buildMemberImageAnalysisApiRequest({ imagesBase64, memberName }) {
   const options = {
     hostname: baseUrl.hostname,
     port: baseUrl.port,
-    path: IMAGE_PROVIDER === "volcengine" ? getResponsesApiPath(baseUrl) : getChatCompletionsApiPath(baseUrl),
+    path: MEMBER_ANALYSIS_PROVIDER === "volcengine" ? getResponsesApiPath(baseUrl, MEMBER_ANALYSIS_PROVIDER) : getChatCompletionsApiPath(baseUrl, MEMBER_ANALYSIS_PROVIDER),
     method: "POST",
     headers: {
-      Authorization: `Bearer ${IMAGE_API_KEY}`,
+      Authorization: `Bearer ${MEMBER_ANALYSIS_API_KEY}`,
       "Content-Type": "application/json",
       "Content-Length": Buffer.byteLength(payload)
     },
@@ -547,10 +589,12 @@ async function handleGenerateImage(req, res) {
     return
   }
 
-  if (!IMAGE_API_KEY) {
+  if (!MEMBER_ANALYSIS_API_KEY) {
     sendJson(res, 500, {
       ok: false,
-      error: IMAGE_PROVIDER === "volcengine" ? "Server missing ARK_API_KEY." : "Server missing OPENAI_API_KEY."
+      error: MEMBER_ANALYSIS_PROVIDER === "aliyun"
+        ? "Server missing ALIYUN_API_KEY."
+        : (MEMBER_ANALYSIS_PROVIDER === "volcengine" ? "Server missing ARK_API_KEY." : "Server missing OPENAI_API_KEY.")
     })
     return
   }
@@ -637,11 +681,15 @@ function getHealthInfo() {
     imageModel: IMAGE_MODEL,
     imageEditModel: IMAGE_EDIT_MODEL,
     visionModel: VISION_MODEL,
+    memberAnalysisProvider: MEMBER_ANALYSIS_PROVIDER,
+    memberAnalysisModel: MEMBER_ANALYSIS_MODEL,
+    hasMemberAnalysisApiKey: Boolean(MEMBER_ANALYSIS_API_KEY),
     hasBackendAccessToken: Boolean(BACKEND_ACCESS_TOKEN),
     configuredBaseUrl: RAW_OPENAI_BASE_URL,
     configuredImageModel: RAW_IMAGE_MODEL,
     configuredImageEditModel: RAW_IMAGE_EDIT_MODEL,
-    configuredVisionModel: RAW_VISION_MODEL
+    configuredVisionModel: RAW_VISION_MODEL,
+    configuredMemberAnalysisModel: RAW_MEMBER_ANALYSIS_MODEL
   }
 }
 
