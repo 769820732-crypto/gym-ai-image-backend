@@ -242,6 +242,13 @@ function getChatCompletionsApiPath(baseUrl, provider = IMAGE_PROVIDER) {
   return `${baseUrl.pathname}/v1/chat/completions`
 }
 
+function getResponsesApiPath(baseUrl, provider = IMAGE_PROVIDER) {
+  if (provider === "volcengine") {
+    return `${baseUrl.pathname}/responses`
+  }
+  return `${baseUrl.pathname}/v1/responses`
+}
+
 function buildImageApiRequest({ prompt, size, referenceImageBase64, referenceImagesBase64 }) {
   const baseUrl = normalizeBaseUrl()
   const referenceImages = normalizeReferenceImages(
@@ -352,33 +359,52 @@ JSON 字段：
 function buildMemberImageAnalysisApiRequest({ imagesBase64, memberName }) {
   const baseUrl = normalizeBaseUrl()
   const images = normalizeReferenceImages(imagesBase64)
-  const content = [
-    {
-      type: "text",
-      text: buildMemberAnalysisPrompt(memberName)
-    },
-    ...images.map(image => ({
-      type: "image_url",
-      image_url: {
-        url: image
-      }
-    }))
-  ]
-  const body = {
-    model: VISION_MODEL,
-    messages: [
-      {
-        role: "user",
-        content
-      }
-    ],
-    temperature: 0.2
-  }
+  const body = IMAGE_PROVIDER === "volcengine"
+    ? {
+      model: VISION_MODEL,
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: buildMemberAnalysisPrompt(memberName)
+            },
+            ...images.map(image => ({
+              type: "input_image",
+              image_url: image
+            }))
+          ]
+        }
+      ],
+      temperature: 0.2
+    }
+    : {
+      model: VISION_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: buildMemberAnalysisPrompt(memberName)
+            },
+            ...images.map(image => ({
+              type: "image_url",
+              image_url: {
+                url: image
+              }
+            }))
+          ]
+        }
+      ],
+      temperature: 0.2
+    }
   const payload = JSON.stringify(body)
   const options = {
     hostname: baseUrl.hostname,
     port: baseUrl.port,
-    path: getChatCompletionsApiPath(baseUrl),
+    path: IMAGE_PROVIDER === "volcengine" ? getResponsesApiPath(baseUrl) : getChatCompletionsApiPath(baseUrl),
     method: "POST",
     headers: {
       Authorization: `Bearer ${IMAGE_API_KEY}`,
@@ -456,9 +482,15 @@ function normalizeAnalysisText(value) {
 function extractMemberImageAnalysis(result) {
   const firstChoice = result.choices && result.choices[0] ? result.choices[0] : {}
   const message = firstChoice.message || {}
-  const content = Array.isArray(message.content)
+  const responseOutputText = Array.isArray(result.output)
+    ? result.output
+      .flatMap(item => Array.isArray(item.content) ? item.content : [])
+      .map(item => item && (item.text || item.content || ""))
+      .join("")
+    : ""
+  const content = responseOutputText || (Array.isArray(message.content)
     ? message.content.map(item => item && (item.text || item.content || "")).join("")
-    : message.content
+    : message.content)
   const parsed = extractJsonObject(content)
 
   return {

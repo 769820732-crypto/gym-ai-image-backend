@@ -117,16 +117,16 @@ const analysisRequest = buildMemberImageAnalysisApiRequest({
 })
 
 assert.strictEqual(analysisRequest.options.hostname, "ark.cn-beijing.volces.com")
-assert.strictEqual(analysisRequest.options.path, "/api/v3/chat/completions")
+assert.strictEqual(analysisRequest.options.path, "/api/v3/responses")
 assert.strictEqual(analysisRequest.options.headers.Authorization, "Bearer ark-test-key")
-assert.ok(analysisRequest.body.messages[0].content.some(item => item.type === "text"), "analysis request should include text instructions")
+assert.ok(analysisRequest.body.input[0].content.some(item => item.type === "input_text"), "analysis request should include text instructions")
 assert.strictEqual(
-  analysisRequest.body.messages[0].content.filter(item => item.type === "image_url").length,
+  analysisRequest.body.input[0].content.filter(item => item.type === "input_image").length,
   2,
   "analysis request should include up to three uploaded images"
 )
 assert.ok(
-  analysisRequest.body.messages[0].content[0].text.includes("bodyFatChange"),
+  analysisRequest.body.input[0].content[0].text.includes("bodyFatChange"),
   "analysis prompt should request body data fields"
 )
 
@@ -148,6 +148,29 @@ assert.deepStrictEqual(extractMemberImageAnalysis({
   weightChange: "weight-down",
   postureChange: "posture-up",
   analysisSummary: "summary"
+})
+
+assert.deepStrictEqual(extractMemberImageAnalysis({
+  output: [
+    {
+      content: [
+        {
+          type: "output_text",
+          text: JSON.stringify({
+            bodyFatChange: "response-body-fat",
+            weightChange: "response-weight",
+            postureChange: "response-posture",
+            analysisSummary: "response-summary"
+          })
+        }
+      ]
+    }
+  ]
+}), {
+  bodyFatChange: "response-body-fat",
+  weightChange: "response-weight",
+  postureChange: "response-posture",
+  analysisSummary: "response-summary"
 })
 
 console.log("server provider tests passed")
