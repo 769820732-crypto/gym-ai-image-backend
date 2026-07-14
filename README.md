@@ -20,7 +20,7 @@ ARK_API_KEY=你的火山方舟 API Key
 OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 IMAGE_MODEL=doubao-seedream-4-0-250828
 IMAGE_EDIT_MODEL=doubao-seedream-4-0-250828
-VISION_MODEL=doubao-1-5-vision-pro-32k-250115
+VISION_MODEL=doubao-1-5-vision-pro-32k
 ```
 
 说明：

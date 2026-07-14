@@ -51,7 +51,7 @@ function getDefaultImageEditModel(provider = IMAGE_PROVIDER) {
 
 function getDefaultVisionModel(provider = IMAGE_PROVIDER) {
   if (provider === "volcengine") {
-    return "doubao-1-5-vision-pro-32k-250115"
+    return "doubao-1-5-vision-pro-32k"
   }
   return "gpt-4o-mini"
 }
