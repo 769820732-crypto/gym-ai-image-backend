@@ -8,6 +8,8 @@ process.env.IMAGE_MODEL = "doubao-seedream-4-0-250828"
 process.env.IMAGE_EDIT_MODEL = "doubao-seedream-4-0-250828"
 
 const {
+  buildMemberImageAnalysisApiRequest,
+  extractMemberImageAnalysis,
   buildImageApiRequest,
   getHealthInfo,
   getImageFromResult
@@ -108,5 +110,44 @@ assert.strictEqual(accessTokenChecks.bearer, true)
 assert.strictEqual(accessTokenChecks.header, true)
 assert.strictEqual(accessTokenChecks.health.hasBackendAccessToken, true)
 assert.ok(!JSON.stringify(accessTokenChecks.health).includes("server-secret"))
+
+const analysisRequest = buildMemberImageAnalysisApiRequest({
+  imagesBase64: [referenceImage, secondReferenceImage],
+  memberName: "member-a"
+})
+
+assert.strictEqual(analysisRequest.options.hostname, "ark.cn-beijing.volces.com")
+assert.strictEqual(analysisRequest.options.path, "/api/v3/chat/completions")
+assert.strictEqual(analysisRequest.options.headers.Authorization, "Bearer ark-test-key")
+assert.ok(analysisRequest.body.messages[0].content.some(item => item.type === "text"), "analysis request should include text instructions")
+assert.strictEqual(
+  analysisRequest.body.messages[0].content.filter(item => item.type === "image_url").length,
+  2,
+  "analysis request should include up to three uploaded images"
+)
+assert.ok(
+  analysisRequest.body.messages[0].content[0].text.includes("bodyFatChange"),
+  "analysis prompt should request body data fields"
+)
+
+assert.deepStrictEqual(extractMemberImageAnalysis({
+  choices: [
+    {
+      message: {
+        content: JSON.stringify({
+          bodyFatChange: "body-fat-down",
+          weightChange: "weight-down",
+          postureChange: "posture-up",
+          analysisSummary: "summary"
+        })
+      }
+    }
+  ]
+}), {
+  bodyFatChange: "body-fat-down",
+  weightChange: "weight-down",
+  postureChange: "posture-up",
+  analysisSummary: "summary"
+})
 
 console.log("server provider tests passed")

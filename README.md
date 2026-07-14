@@ -20,6 +20,7 @@ ARK_API_KEY=你的火山方舟 API Key
 OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 IMAGE_MODEL=doubao-seedream-4-0-250828
 IMAGE_EDIT_MODEL=doubao-seedream-4-0-250828
+VISION_MODEL=doubao-1-5-vision-pro-32k-250115
 ```
 
 说明：
@@ -27,6 +28,7 @@ IMAGE_EDIT_MODEL=doubao-seedream-4-0-250828
 - `IMAGE_PROVIDER=volcengine` 会让后端请求火山方舟 `/api/v3/images/generations`。
 - `ARK_API_KEY` 只放在后端，不要放进小程序前端。
 - `IMAGE_EDIT_MODEL` 用于用户上传门店图后的图生图/编辑链路。
+- `VISION_MODEL` 用于会员月总结里的体测图、围度图、体态图识别分析。
 - 用户上传 1-3 张门店参考图时，Volcengine 链路会把这些图片作为 `image` 数组传给 Seedream，帮助模型同时参考多个视角。
 - 如果火山控制台给你的模型 ID 不同，以控制台开通的正式模型 ID 为准。
 - 不配置 `IMAGE_PROVIDER` 时，后端仍保持原来的 OpenAI 兼容模式，默认走硅基流动。
@@ -81,6 +83,35 @@ POST http://localhost:8787/api/generate-image
 {
   "prompt": "Square 1:1 WeChat Moments fitness poster image, premium deep red style, clean professional gym.",
   "size": "1024x1024"
+}
+```
+
+会员数据分析图识别接口：
+
+```text
+POST http://localhost:8787/api/analyze-member-images
+```
+
+请求体：
+
+```json
+{
+  "memberName": "小雅",
+  "imagesBase64": ["data:image/jpeg;base64,..."]
+}
+```
+
+返回：
+
+```json
+{
+  "ok": true,
+  "analysis": {
+    "bodyFatChange": "从24%下降到22.8%",
+    "weightChange": "从58kg下降到56.5kg",
+    "postureChange": "圆肩前伸改善，站姿更挺拔",
+    "analysisSummary": "体脂和体态均有改善，可继续保持训练频率。"
+  }
 }
 ```
 
